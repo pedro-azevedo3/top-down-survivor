@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jogo Top-Down Survivor</title>
+    <style>
+        #gameCanvas {
+            border: 1px solid black;
+            background: #f0f0f0;
+        }
+        #addSwordButton, #restartButton {
+            margin: 10px;
+            padding: 5px 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <button id="addSwordButton">Adicionar Espada (10 pontos)</button>
+    <button id="restartButton">Reiniciar</button>
+    <canvas id="gameCanvas" width="1200" height="800"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const addSwordButton = document.getElementById('addSwordButton');
+        const restartButton = document.getElementById('restartButton');
+
+        // Objeto do jogador
+        const player = {
+            x: 600,
+            y: 400,
+            radius: 10,
+            speed: 4,
+            maxHealth: 10,
+            health: 10,
+            lastRegen: Date.now(),
+            score: 0
+        };
+
+        // Definição dos ângulos das espadas para formar uma estrela
+        const swordAngles = [0, Math.PI, Math.PI / 2, (3 * Math.PI) / 2];
+        let swords = [{
+            length: 30,
+            width: 5,
+            distance: 25,
+            angle: 0,
+            speed: 0.1
+        }];
+
+        let enemies = [];
+        let gameRunning = true;
+
+        const keys = { w: false, a: false, s: false, d: false };
+
+        document.addEventListener('keydown', (e) => {
+            switch (e.key.toLowerCase()) {
+                case 'w': keys.w = true; break;
+                case 'a': keys.a = true; break;
+                case 's': keys.s = true; break;
+                case 'd': keys.d = true; break;
+                case 'u': addSword(); break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            switch (e.key.toLowerCase()) {
+                case 'w': keys.w = false; break;
+                case 'a': keys.a = false; break;
+                case 's': keys.s = false; break;
+                case 'd': keys.d = false; break;
+            }
+        });
+
+        // Função para adicionar nova espada de maneira oposta à anterior
+        function addSword() {
+            if (swords.length >= 4) return; // Limite de 4 espadas
+            if (player.score < 10) return; // Verifica se tem pontos suficientes
+
+            player.score -= 10; // Custa 10 pontos por espada
+
+            // Define os ângulos opostos sempre no momento da adição
+            const angles = [0, Math.PI, Math.PI / 2, (3 * Math.PI) / 2]; // 0°, 180°, 90°, 270°
+            const newSword = {
+                length: 30,
+                width: 5,
+                distance: 25,
+                angle: angles[swords.length], // Pega o ângulo correto no momento da adição
+                speed: 0.1
+            };
+            swords.push(newSword);
+        }
+
+
+        function restartGame() {
+            player.x = 600;
+            player.y = 400;
+            player.health = player.maxHealth;
+            player.score = 0;
+            player.lastRegen = Date.now();
+            swords = [{
+                length: 30,
+                width: 5,
+                distance: 25,
+                angle: 0,
+                speed: 0.1
+            }];
+            enemies = [];
+            gameRunning = true;
+            gameLoop();
+        }
+
+        addSwordButton.addEventListener('click', addSword);
+        restartButton.addEventListener('click', restartGame);
+
+        function spawnEnemy() {
+            enemies.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: 7.5,
+                speed: 2,
+                maxHealth: 2,
+                health: 2
+            });
+        }
+
+        function checkSwordCollisions() {
+            swords.forEach(sword => {
+                const swordX = player.x + Math.cos(sword.angle) * sword.distance;
+                const swordY = player.y + Math.sin(sword.angle) * sword.distance;
+                enemies.forEach(enemy => {
+                    const dx = swordX - enemy.x;
+                    const dy = swordY - enemy.y;
+                    if (Math.sqrt(dx * dx + dy * dy) <= enemy.radius + sword.width && enemy.health > 0) {
+                        enemy.health--;
+                        if (enemy.health <= 0) {
+                            player.score += 10;
+                        }
+                    }
+                });
+            });
+            enemies = enemies.filter(enemy => enemy.health > 0);
+        }
+
+        function checkEnemyCollisions() {
+            enemies.forEach(enemy => {
+                const dx = player.x - enemy.x;
+                const dy = player.y - enemy.y;
+                if (Math.sqrt(dx * dx + dy * dy) <= player.radius + enemy.radius && player.health > 0) {
+                    player.health--;
+                }
+            });
+        }
+
+        function regenerateHealth() {
+            if (Date.now() - player.lastRegen >= 5000 && player.health < player.maxHealth) {
+                player.health++;
+                player.lastRegen = Date.now();
+            }
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (keys.w && player.y - player.radius > 0) player.y -= player.speed;
+            if (keys.s && player.y + player.radius < canvas.height) player.y += player.speed;
+            if (keys.a && player.x - player.radius > 0) player.x -= player.speed;
+            if (keys.d && player.x + player.radius < canvas.width) player.x += player.speed;
+
+            swords.forEach(sword => sword.angle += sword.speed);
+            regenerateHealth();
+
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+            ctx.closePath();
+
+            ctx.fillStyle = 'green';
+            ctx.fillRect(player.x - 20, player.y - 20, (player.health / player.maxHealth) * 40, 5);
+
+            swords.forEach(sword => {
+                ctx.save();
+                ctx.translate(player.x, player.y);
+                ctx.rotate(sword.angle);
+                ctx.fillStyle = 'gray';
+                ctx.fillRect(sword.distance, -sword.width/2, sword.length, sword.width);
+                ctx.restore();
+            });
+
+            enemies.forEach(enemy => {
+                const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+                enemy.x += Math.cos(angle) * enemy.speed;
+                enemy.y += Math.sin(angle) * enemy.speed;
+                ctx.beginPath();
+                ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                ctx.fillStyle = enemy.health === 2 ? 'blue' : 'lightblue';
+                ctx.fill();
+                ctx.closePath();
+            });
+
+            checkSwordCollisions();
+            checkEnemyCollisions();
+            if (Math.random() < 0.02) spawnEnemy();
+            ctx.fillStyle = 'black';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Pontuação: ${player.score}`, 10, 30);
+            if (player.health <= 0) {
+                gameRunning = false;
+                ctx.fillText('Game Over', canvas.width/2 - 80, canvas.height/2);
+                return;
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
