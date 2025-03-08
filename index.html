@@ -47,7 +47,7 @@
 
         #gameOver {
             font-size: 30px;
-            color: red; /* Alterando a cor para vermelho */
+            color: red;
             text-align: center;
             position: absolute;
             top: 50%;
@@ -94,7 +94,7 @@
             score: 10 // O jogador já começa com 10 pontos
         };
 
-        let swords = [];
+        let swords = []; // Array de espadas
         let enemies = [];
 
         const keys = { w: false, a: false, s: false, d: false };
@@ -119,6 +119,7 @@
             }
         });
 
+        // Função para adicionar espadas
         function addSword() {
             if (swords.length >= 8 || player.score < 10) return; // Limite de 8 espadas
             player.score -= 10;
@@ -243,6 +244,9 @@
 
             requestAnimationFrame(gameLoop);
         }
+
+        // Iniciar o jogo com uma espada
+        addSword();
 
         gameLoop();
     </script>
